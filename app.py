@@ -3,6 +3,9 @@ import pandas as pd
 import numpy as np
 import fasttext
 import matplotlib.pyplot as plt
+# 리눅스 서버(스트림릿)용 한글 폰트 적용 및 마이너스 기호 깨짐 방지
+plt.rc('font', family='NanumGothic')
+plt.rcParams['axes.unicode_minus'] = False
 import seaborn as sns
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
