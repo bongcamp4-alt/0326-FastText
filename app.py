@@ -32,8 +32,8 @@ def main():
 
     # 3. FastText 모델 로드 (이전에 만든 미니 모델 또는 다운로드 받은 모델)
     try:
-        # 모델 파일 이름은 현재 환경에 맞춰 수정해주세요 ('mini_model.bin' 등)
-        ft_model = fasttext.load_model('mini_model.bin') 
+        # 모델 파일 이름은 현재 환경에 맞춰 수정해주세요 ('micro_model.bin' 등)
+        ft_model = fasttext.load_model('micro_model.bin') 
     except:
         print("에러: FastText 모델 파일(.bin)을 찾을 수 없습니다.")
         return
