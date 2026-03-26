@@ -3,3 +3,4 @@ fasttext
 pandas
 numpy
 plotly
+matplotlib
