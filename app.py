@@ -23,7 +23,7 @@ def load_and_train_model():
         return np.mean(word_vectors, axis=0)
 
     # 전체 데이터 벡터화 및 로지스틱 회귀 모델 학습
-    X = np.stack(df['processed'].apply(lambda x: get_document_vector(x, ft_model)).values)
+    X = np.stack(df['title'].apply(lambda x: get_document_vector(x, ft_model)).values)
     y = df['query'].values
 
     clf = LogisticRegression(max_iter=1000, random_state=42)
