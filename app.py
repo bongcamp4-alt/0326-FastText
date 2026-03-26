@@ -14,7 +14,7 @@ st.title("📊 FastText 뉴스 카테고리 분류 결과")
 st.write("데이터를 불러오고 AI 모델을 학습하는 중입니다. 잠시만 기다려주세요...")
 
 # 1. 데이터와 모델 불러오기
-df = pd.read_csv('news_data_processed.csv').dropna(subset=['query', 'processed'])
+df = pd.read_csv('news_data.csv').dropna(subset=['query', 'title'])
 ft_model = fasttext.load_model('micro_model.bin')
 
 # 문서 벡터화 함수
@@ -26,7 +26,7 @@ def get_document_vector(text, model):
     return np.mean(word_vectors, axis=0)
 
 # 2. 벡터화 및 학습
-df['doc_vector'] = df['processed'].apply(lambda x: get_document_vector(x, ft_model))
+df['doc_vector'] = df['title'].apply(lambda x: get_document_vector(x, ft_model))
 X = np.stack(df['doc_vector'].values)
 y = df['query'].values
 
