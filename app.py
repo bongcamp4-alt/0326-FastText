@@ -11,7 +11,7 @@ st.set_page_config(page_title="AI 뉴스 분류기", layout="wide")
 @st.cache_resource
 def load_and_train_model():
     # 데이터와 미니 모델 로드
-    df = pd.read_csv('news_data_processed.csv').dropna(subset=['query', 'processed'])
+    df = pd.read_csv('news_data.csv').dropna(subset=['query', 'title'])
     ft_model = fasttext.load_model('micro_model.bin')
 
     # 단어 벡터 평균으로 문서 벡터를 만드는 함수
