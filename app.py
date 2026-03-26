@@ -2,64 +2,68 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import fasttext
-import matplotlib.pyplot as plt
-# 리눅스 서버(스트림릿)용 한글 폰트 적용 및 마이너스 기호 깨짐 방지
-plt.rc('font', family='NanumGothic')
-plt.rcParams['axes.unicode_minus'] = False
-import seaborn as sns
-from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import classification_report, confusion_matrix
 
-st.set_page_config(page_title="뉴스 카테고리 분류", layout="wide")
+# 페이지 기본 설정
+st.set_page_config(page_title="AI 뉴스 분류기", layout="wide")
 
-st.title("📊 FastText 뉴스 카테고리 분류 결과")
-st.write("데이터를 불러오고 AI 모델을 학습하는 중입니다. 잠시만 기다려주세요...")
+# 1. AI 모델 세팅 및 학습 (앱 구동 시 최초 1회만 실행되도록 캐싱)
+@st.cache_resource
+def load_and_train_model():
+    # 데이터와 미니 모델 로드
+    df = pd.read_csv('news_data_processed.csv').dropna(subset=['query', 'processed'])
+    ft_model = fasttext.load_model('micro_model.bin')
 
-# 1. 데이터와 모델 불러오기
-df = pd.read_csv('news_data.csv').dropna(subset=['query', 'title'])
-ft_model = fasttext.load_model('micro_model.bin')
+    # 단어 벡터 평균으로 문서 벡터를 만드는 함수
+    def get_document_vector(text, model):
+        words = str(text).split()
+        if not words:
+            return np.zeros(model.get_dimension())
+        word_vectors = [model.get_word_vector(w) for w in words]
+        return np.mean(word_vectors, axis=0)
 
-# 문서 벡터화 함수
-def get_document_vector(text, model):
-    words = str(text).split()
-    if not words:
-        return np.zeros(model.get_dimension())
-    word_vectors = [model.get_word_vector(w) for w in words]
-    return np.mean(word_vectors, axis=0)
+    # 전체 데이터 벡터화 및 로지스틱 회귀 모델 학습
+    X = np.stack(df['processed'].apply(lambda x: get_document_vector(x, ft_model)).values)
+    y = df['query'].values
 
-# 2. 벡터화 및 학습
-df['doc_vector'] = df['title'].apply(lambda x: get_document_vector(x, ft_model))
-X = np.stack(df['doc_vector'].values)
-y = df['query'].values
+    clf = LogisticRegression(max_iter=1000, random_state=42)
+    clf.fit(X, y)
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    return ft_model, clf, get_document_vector
 
-clf = LogisticRegression(max_iter=1000, random_state=42)
-clf.fit(X_train, y_train)
-y_pred = clf.predict(X_test)
+# 백그라운드에서 조용히 모델을 준비합니다.
+ft_model, clf, get_document_vector = load_and_train_model()
 
-st.success("학습 완료! 결과를 확인하세요.")
+# 2. 메인 웹 화면 UI
+st.title("📰 AI 실시간 뉴스 카테고리 예측기")
+st.markdown("뉴스 기사의 본문이나 제목을 입력하면, AI가 어느 분야의 기사인지 즉시 분류합니다.")
 
-col1, col2 = st.columns(2)
+# 사용자 텍스트 입력 창
+user_input = st.text_area("분석할 텍스트를 입력하세요:", height=150, 
+                          placeholder="여기에 뉴스 내용을 복사해서 붙여넣어 보세요.")
 
-# 3. 결과 화면에 출력 (st.text 사용)
-with col1:
-    st.subheader("📝 분류 성능 평가 보고서")
-    st.text(classification_report(y_test, y_pred))
-
-# 4. 혼동 행렬 시각화 (st.pyplot 사용)
-with col2:
-    st.subheader("🎯 카테고리 분류 혼동 행렬")
-    cm = confusion_matrix(y_test, y_pred)
-    classes = clf.classes_
-
-    fig, ax = plt.subplots(figsize=(8, 6))
-    
-    # 그래프에 혼동 행렬 그리기
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=classes, yticklabels=classes, ax=ax)
-    plt.ylabel('실제 카테고리 (True Label)')
-    plt.xlabel('예측 카테고리 (Predicted Label)')
-    
-    # 웹 화면에 그래프 띄우기
-    st.pyplot(fig)
+# 3. 예측 실행 및 결과 출력
+if st.button("카테고리 예측하기", type="primary"):
+    if user_input.strip() == "":
+        st.warning("분석할 텍스트를 먼저 입력해 주세요!")
+    else:
+        with st.spinner("AI가 텍스트 문맥을 분석 중입니다..."):
+            # 입력받은 텍스트를 숫자로 변환(벡터화)
+            doc_vector = get_document_vector(user_input, ft_model)
+            
+            # 예측 및 확률 계산 (모델에는 항상 2차원 배열로 넣어야 해서 []로 감싸줍니다)
+            prediction = clf.predict([doc_vector])[0]
+            probabilities = clf.predict_proba([doc_vector])[0]
+            
+            # 메인 결과 출력
+            st.success(f"이 기사는 **'{prediction}'** 카테고리로 분류되었습니다! 🎉")
+            
+            # 디테일한 확률 표 출력
+            st.subheader("📊 AI의 카테고리별 예측 확률")
+            prob_df = pd.DataFrame({
+                '카테고리': clf.classes_,
+                '확률(%)': np.round(probabilities * 100, 2)
+            }).sort_values(by='확률(%)', ascending=False)
+            
+            # 표 형태로 깔끔하게 표시
+            st.dataframe(prob_df, use_container_width=True, hide_index=True)
