@@ -1,5 +1,5 @@
 streamlit
-fasttext
+fasttext-wheel
 pandas
 numpy
 plotly
